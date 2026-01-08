@@ -1,6 +1,7 @@
-import { forwardRef, useRef } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import type { Project } from '../types';
 import { iframeScript } from '../assets/assets';
+import EditorPanel, { type ISelectedElement } from './EditorPanel';
 
 interface ProjectReviewProps {
   project: Project;
@@ -20,6 +21,9 @@ const ProjectPreview = forwardRef<ProjectPeviewRef, ProjectReviewProps>(
   ) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
+    const [selectedElement, setSelectedElement] =
+      useState<ISelectedElement | null>(null);
+
     const reso = {
       phone: 'w-[412px]',
       tablet: 'w-[768px]',
@@ -38,14 +42,58 @@ const ProjectPreview = forwardRef<ProjectPeviewRef, ProjectReviewProps>(
       }
     };
 
+    const handleUpdate = (updates: unknown) => {
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: 'UPDATE_ELEMENT',
+            payload: updates,
+          },
+          '*'
+        );
+      }
+    };
+
+    useEffect(() => {
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === 'ELEMENT_SELECTED') {
+          setSelectedElement(event.data.payload);
+        } else if (event.data.type === 'CLEAR_SELECTION') {
+          setSelectedElement(null);
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+      return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
     return (
       <div className="relative h-full bg-gray-900 flex-1 rounded-xl overflow-hidden max-sm:ml-2">
         {project.current_code ? (
-          <iframe
-            ref={iframeRef}
-            srcDoc={injectPreview(project.current_code)}
-            className={`h-full max-sm:w-full ${reso[device]} mx-auto transition-all`}
-          />
+          <>
+            <iframe
+              ref={iframeRef}
+              srcDoc={injectPreview(project.current_code)}
+              className={`h-full max-sm:w-full ${reso[device]} mx-auto transition-all`}
+            />
+            {showEditorPanel && selectedElement && (
+              <EditorPanel
+                selectedElement={selectedElement}
+                onUpdate={handleUpdate}
+                onClose={() => {
+                  setSelectedElement(null);
+                  if (iframeRef.current?.contentWindow) {
+                    iframeRef.current.contentWindow.postMessage(
+                      {
+                        type: 'CLEAR_SELECTION_REQUEST',
+                      },
+                      '*'
+                    );
+                  }
+                }}
+              />
+            )}
+          </>
         ) : (
           isGenerating && <div>loading</div>
         )}
