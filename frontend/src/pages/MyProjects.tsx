@@ -72,7 +72,7 @@ export default function MyProjects() {
 
                   {/* Content */}
                   <div className="p-4 text-white bg-linear-180 from-transparent group-hover:from-indigo-950 to-transparent transition-colors">
-                    <div className="flex justify-between">
+                    <div className="flex items-center justify-between">
                       <h2 className="text-lg font-medium line-clamp-2">
                         {project.name}
                       </h2>
